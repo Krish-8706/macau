@@ -1,94 +1,144 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 void main() {
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  @override
+  void initState() {
+    super.initState();
+    _requestNotificationListenerPermission();
+  }
+
+  Future<void> _requestNotificationListenerPermission() async {
+    try {
+      await MethodChannel(
+        'ringer_mode_channel',
+      ).invokeMethod('checkNotificationListenerPermission');
+    } catch (e) {
+      debugPrint('Error opening notification listener permission settings: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Aesthetic Counter',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.teal,
-          brightness: Brightness.light,
-        ),
-        useMaterial3: true,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Ringer Mode Toggle')),
+        body: const Center(child: ToggleButton()),
       ),
-      home: const CounterPage(),
     );
   }
 }
 
-class CounterPage extends StatefulWidget {
-  const CounterPage({super.key});
+class ToggleButton extends StatelessWidget {
+  const ToggleButton({super.key});
 
-  @override
-  State<CounterPage> createState() => _CounterPageState();
-}
+  static const MethodChannel _methodChannel = MethodChannel(
+    'ringer_mode_channel',
+  );
+  static const EventChannel _eventChannel = EventChannel(
+    'missed_call_notifications',
+  );
 
-class _CounterPageState extends State<CounterPage> {
-  int _count = 0;
-
-  void _increment() {
-    setState(() => _count++);
-  }
-
-  void _decrement() {
-    setState(() => _count--);
+  Future<void> toggleRingerMode() async {
+    try {
+      await _methodChannel.invokeMethod('toggleRingerMode');
+    } on PlatformException catch (e) {
+      debugPrint("Failed to toggle: '${e.message}'.");
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
+    return Column(
+      children: [
+        // Your 3 mode buttons
+        ElevatedButton(
+          onPressed: () => RingerController.setRingerMode(0), // Silent
+          child: const Text('Silent Mode'),
+        ),
+        ElevatedButton(
+          onPressed: () => RingerController.setRingerMode(1), // Vibrate
+          child: const Text('Vibrate Mode'),
+        ),
+        ElevatedButton(
+          onPressed: () => RingerController.setRingerMode(2), // Normal
+          child: const Text('Normal Mode'),
+        ),
 
-    return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      appBar: AppBar(
-        title: const Text('Aesthetic Counter'),
-        centerTitle: true,
-        elevation: 0,
-      ),
-      body: Center(
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 400),
-          transitionBuilder: (child, animation) =>
-              ScaleTransition(scale: animation, child: child),
-          child: Text(
-            '$_count',
-            key: ValueKey<int>(_count),
-            style: textTheme.displayLarge?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-          ),
-        ),
-      ),
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 40),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            FloatingActionButton(
-              heroTag: 'decrement',
-              onPressed: _decrement,
-              backgroundColor: Theme.of(context).colorScheme.errorContainer,
-              child: const Icon(Icons.remove),
-            ),
-            FloatingActionButton.extended(
-              heroTag: 'increment',
-              onPressed: _increment,
-              backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-              icon: const Icon(Icons.add),
-              label: const Text('Add'),
-            ),
-          ],
-        ),
-      ),
+        const SizedBox(height: 20),
+
+        // The missed calls notification list widget
+        const Expanded(child: MissedCallNotifier()),
+      ],
+    );
+  }
+}
+
+class RingerController {
+  static const MethodChannel _channel = MethodChannel('ringer_mode_channel');
+
+  /// mode: 0 = silent, 1 = vibrate, 2 = normal
+  static Future<void> setRingerMode(int mode) async {
+    try {
+      await _channel.invokeMethod('setRingerMode', {'mode': mode});
+    } on PlatformException catch (e) {
+      print('Failed to set ringer mode: ${e.message}');
+    }
+  }
+}
+
+class MissedCallNotifier extends StatefulWidget {
+  const MissedCallNotifier({super.key});
+
+  @override
+  _MissedCallNotifierState createState() => _MissedCallNotifierState();
+}
+
+class _MissedCallNotifierState extends State<MissedCallNotifier> {
+  static const EventChannel _eventChannel = EventChannel(
+    'missed_call_notifications',
+  );
+  final List<String> _missedCalls = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _eventChannel.receiveBroadcastStream().listen(
+      (event) {
+        setState(() {
+          _missedCalls.insert(0, event.toString()); // Newest on top
+        });
+      },
+      onError: (error) {
+        debugPrint('Error receiving missed call notifications: $error');
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_missedCalls.isEmpty) {
+      return const Center(child: Text('No missed calls detected yet.'));
+    }
+    return ListView.builder(
+      itemCount: _missedCalls.length,
+      itemBuilder: (context, index) {
+        return ListTile(
+          leading: const Icon(Icons.call_missed, color: Colors.red),
+          title: Text(_missedCalls[index]),
+        );
+      },
     );
   }
 }
