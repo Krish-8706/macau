@@ -1,6 +1,6 @@
 name: macau
 description: "A new Flutter project."
-publish_to: 'none'
+publish_to: "none"
 version: 0.1.0
 
 environment:
@@ -14,9 +14,10 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.13.1
 
-flutter:
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon.png"
   uses-material-design: true
-
-
-# Hi Krishna
