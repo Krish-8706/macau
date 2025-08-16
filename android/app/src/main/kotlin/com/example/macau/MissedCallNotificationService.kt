@@ -20,7 +20,7 @@ class MissedCallNotificationService : NotificationListenerService() {
 
         Log.d(TAG, "Notification posted from $packageName: $title - $text")
 
-        // You may need to customize this filter for your device's dialer package name
+        // Filter missed call notifications
         if ((packageName.contains("dialer") || packageName.contains("phone") || packageName.contains("com.android.phone"))
             && title.contains("Missed call", ignoreCase = true)) {
             Log.d(TAG, "Missed call notification detected: $title - $text")
