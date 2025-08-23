@@ -1,8 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:macau/core/services/missed_call_logger_service.dart';
 import 'package:macau/features/home/home_page.dart';
 
-void main() {
-  runApp(const MyApp());
+Future<void> main() async {
+  // Initialise Hive before running app
+  await MissedCallLoggerNotifier.initialiseHive();
+  MissedCallLoggerNotifier.initialiseHive();
+  
+  runApp(
+    ProviderScope(
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -16,7 +26,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: const HomePage(),
+      home: const HomeScreen(),
     );
   }
 }

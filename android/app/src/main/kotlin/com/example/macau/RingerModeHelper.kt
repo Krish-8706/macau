@@ -27,4 +27,9 @@ class RingerModeHelper(private val context: Context) {
             2 -> audioManager.ringerMode = AudioManager.RINGER_MODE_NORMAL
         }
     }
+
+    fun getCurrentRingerMode(): Int {
+        val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        return audioManager.ringerMode // 0 = silent, 1 = vibrate, 2 = normal
+    }
 }

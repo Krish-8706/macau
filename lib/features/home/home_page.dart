@@ -1,90 +1,72 @@
 import 'package:flutter/material.dart';
-import 'package:macau/core/services/missed_call_service.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:macau/core/providers/missed_call_service_provider.dart';
+import 'package:macau/core/entities/call_log.dart';
 import 'package:macau/core/services/ringer_mode_service.dart';
 
-class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+class HomeScreen extends ConsumerWidget {
+  const HomeScreen({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final missedCalls = ref.watch(missedCallLoggerProvider);
 
-class _HomePageState extends State<HomePage> {
-  final _ringerService = RingerModeService();
-  final _missedCallService = MissedCallService();
-
-  final List<String> _missedCalls = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _listenToMissedCalls();
-  }
-
-  void _listenToMissedCalls() {
-    _missedCallService.missedCallStream.listen((call) {
-      setState(() {
-        _missedCalls.insert(0, call); // latest on top
-      });
-    });
-  }
-
-  Future<void> _setMode(int mode) async {
-    await _ringerService.setRingerMode(mode);
-  }
-
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Ringer & Missed Calls'),
+        title: const Text("Recent Missed Calls"),
       ),
       body: Column(
         children: [
-          const SizedBox(height: 20),
-
-          // Buttons
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              ElevatedButton.icon(
-                onPressed: () => _setMode(0),
-                icon: const Icon(Icons.notifications_off),
-                label: const Text("Silent"),
-              ),
-              ElevatedButton.icon(
-                onPressed: () => _setMode(1),
-                icon: const Icon(Icons.vibration),
-                label: const Text("Vibrate"),
-              ),
-              ElevatedButton.icon(
-                onPressed: () => _setMode(2),
-                icon: const Icon(Icons.notifications_active),
-                label: const Text("Ringer"),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 30),
-          const Divider(),
-
-          const Padding(
-            padding: EdgeInsets.all(8.0),
-            child: Text(
-              "Missed Calls",
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          // Ringer mode buttons
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                ElevatedButton.icon(
+                  onPressed: () => RingerModeService.setRingerMode(0),
+                  icon: const Icon(Icons.notifications_off),
+                  label: const Text("Silent"),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () => RingerModeService.setRingerMode(1),
+                  icon: const Icon(Icons.vibration),
+                  label: const Text("Vibrate"),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () => RingerModeService.setRingerMode(2),
+                  icon: const Icon(Icons.notifications_active),
+                  label: const Text("Ringer"),
+                ),
+              ],
             ),
           ),
 
+          // Missed calls list
           Expanded(
-            child: _missedCalls.isEmpty
-                ? const Center(child: Text("No missed calls yet"))
+            child: missedCalls.isEmpty
+                ? const Center(
+                    child: Text("No missed calls"),
+                  )
                 : ListView.builder(
-                    itemCount: _missedCalls.length,
+                    itemCount: missedCalls.length,
                     itemBuilder: (context, index) {
+                      final CallLog log = missedCalls[index];
                       return ListTile(
-                        leading: const Icon(Icons.call_missed, color: Colors.red),
-                        title: Text(_missedCalls[index]),
+                        leading: const Icon(
+                          Icons.call_missed,
+                          color: Colors.red,
+                        ),
+                        title: Text(log.caller),
+                        subtitle: Text(log.timeStamp.toString()),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.delete),
+                          onPressed: () {
+                            ref
+                                .read(missedCallLoggerProvider.notifier)
+                                .deleteLog(index);
+                          },
+                        ),
                       );
                     },
                   ),
