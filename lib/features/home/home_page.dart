@@ -7,6 +7,15 @@ import 'package:macau/core/services/ringer_mode_service.dart';
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
+  String timeSince(DateTime dt) {
+    final diff = DateTime.now().difference(dt);
+
+    if (diff.inMinutes < 1) return "just now";
+    if (diff.inMinutes < 60) return "${diff.inMinutes} min ago";
+    if (diff.inHours < 24) return "${diff.inHours} hr ago";
+    return "${diff.inDays} d ago";
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final missedCalls = ref.watch(missedCallLoggerProvider);
@@ -58,14 +67,12 @@ class HomeScreen extends ConsumerWidget {
                           color: Colors.red,
                         ),
                         title: Text(log.caller),
-                        subtitle: Text(log.timeStamp.toString()),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.delete),
-                          onPressed: () {
-                            ref
-                                .read(missedCallLoggerProvider.notifier)
-                                .deleteLog(index);
-                          },
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(log.timeStamp.toString()),
+                            Text(timeSince(log.timeStamp)),
+                          ],
                         ),
                       );
                     },

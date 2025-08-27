@@ -1,5 +1,6 @@
 package com.example.macau
 
+import android.content.Context
 import android.util.Log
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -29,10 +30,28 @@ class MainActivity : FlutterActivity() {
                             result.error("INVALID_ARGUMENT", "Mode must be 0, 1, or 2", null)
                         }
                     }
+
                     "checkNotificationListenerPermission" -> {
-                        permissionHelper.openNotificationListenerSettings()
-                        result.success(null)
+                        if (permissionHelper.hasNotificationListenerPermission()) {
+                            // Permission already granted
+                            result.success(true)
+                        } else {
+                            // Not granted → open settings
+                            permissionHelper.openNotificationListenerSettings()
+                            result.success(false)
+                        }
                     }
+
+                    "getMissedCallLogs" -> {
+                        val prefs = getSharedPreferences("missed_call_prefs", Context.MODE_PRIVATE)
+                        val logsJson = prefs.getString("call_logs", "[]")
+
+                        // Clear logs once fetched, so they don't duplicate forever
+                        prefs.edit().putString("call_logs", "[]").apply()
+
+                        result.success(logsJson)
+                    }
+
                     else -> result.notImplemented()
                 }
             }

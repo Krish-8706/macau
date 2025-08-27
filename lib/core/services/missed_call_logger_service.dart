@@ -1,28 +1,47 @@
+import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import 'package:hive_flutter/adapters.dart';
 import 'package:macau/core/entities/call_log.dart';
 import 'package:macau/core/services/missed_call_event_service.dart';
 import 'package:macau/core/services/ringer_mode_service.dart';
+
+class NativeLogSync {
+  static const _channel = MethodChannel('ringer_mode_channel');
+
+  static Future<List<CallLog>> fetchNativeLogs() async {
+    final String logsJson = await _channel.invokeMethod('getMissedCallLogs');
+    final List<dynamic> decoded = jsonDecode(logsJson);
+
+    return decoded.map((e) {
+      return CallLog(
+        caller: e['caller'],
+        timeStamp: DateTime.fromMillisecondsSinceEpoch(e['timeStamp']),
+      );
+    }).toList();
+  }
+}
 
 class MissedCallLoggerNotifier extends StateNotifier<List<CallLog>> {
   final MissedCallEventService _missedCallService = MissedCallEventService();
   final Box<CallLog> _box = Hive.box<CallLog>('callLogs');
 
   MissedCallLoggerNotifier() : super([]) {
-    // Load initial logs
     state = _box.values.toList();
+
+    NativeLogSync.fetchNativeLogs().then((logs) {
+      for (final log in logs) {
+        _box.add(log);
+      }
+      state = _box.values.toList();
+    });
 
     RingerModeService.checkNotificationListenerPermission();
 
-    // Start listening for missed call events
     _missedCallService.missedCallStream.listen((call) async {
       print("Missed Call from ${call.caller}");
       addCallLog(call);
       deleteOldLogs();
-      if (await RingerModeService.getCurrentRingerMode() != 2 &&
-          checkDuplicates()) {
-        RingerModeService.setRingerMode(2);
-      }
     });
   }
 
@@ -65,7 +84,7 @@ class MissedCallLoggerNotifier extends StateNotifier<List<CallLog>> {
       final key = entry.key;
       final log = entry.value;
 
-      if (now.difference(log.timeStamp).inMinutes > 5) {
+      if (now.difference(log.timeStamp).inMinutes > 10) {
         keysToDelete.add(key);
       }
     }

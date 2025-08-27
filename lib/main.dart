@@ -6,8 +6,7 @@ import 'package:macau/features/home/home_page.dart';
 Future<void> main() async {
   // Initialise Hive before running app
   await MissedCallLoggerNotifier.initialiseHive();
-  MissedCallLoggerNotifier.initialiseHive();
-  
+
   runApp(
     ProviderScope(
       child: const MyApp(),

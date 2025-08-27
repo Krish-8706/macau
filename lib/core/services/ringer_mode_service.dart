@@ -13,7 +13,9 @@ class RingerModeService {
   }
 
   static Future<bool> checkNotificationListenerPermission() async {
-    final bool granted = await _channel.invokeMethod('checkNotificationListenerPermission');
-    return granted;
+    final granted = await _channel.invokeMethod<bool>(
+      'checkNotificationListenerPermission',
+    );
+    return granted ?? false;
   }
 }
